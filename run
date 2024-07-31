@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+#	template based on:  https://github.com/scitran-apps/fsl-bet/blob/master/run
+#
+#   DeepMedic needs at least 6 GB memory limit (fails at 4GB)
+#
+
+CONTAINER="[captk-coregistration]"
+echo -e "$CONTAINER  Initiated"
+
+###############################################################################
+## Built to flywheel-v0 spec.
+FLYWHEEL_BASE=/flywheel/v0
+OUTPUT_DIR=$FLYWHEEL_BASE/output
+im_DIR=$FLYWHEEL_BASE/input/input_image
+mask_DIR=$FLYWHEEL_BASE/input/mask
+MANIFEST=$FLYWHEEL_BASE/manifest.json
+CONFIG_FILE=$FLYWHEEL_BASE/config.json
+
+###############################################################################
+## Configure the ENV
+export USER=Flywheel
+
+###############################################################################
+## Execute the main processes
+function jsonValue() {
+KEY=$1
+num=$2
+awk -F"[,:}]" '{for(i=1;i<=NF;i++){if($i~/'$KEY'\042/){print $(i+1)}}}' | tr -d '"' | sed -n ${num}p
+}
+
+## get all user configurations
+if [[ -f $CONFIG_FILE ]]; then
+  echo "$CONTAINER  $CONFIG_FILE found. Loading config..."
+
+  z_norm_quant="$(cat $CONFIG_FILE | jsonValue zNormQuant)"
+  z_norm_cut="$(cat $CONFIG_FILE | jsonValue zNormCut)"
+
+else
+  echo "$CONTAINER  $CONFIG_FILE not found. Loading defaults from $MANIFEST..."
+
+  z_norm_quant="$(cat $MANIFEST | jsonValue zNormQuant default)"
+  z_norm_cut="$(cat $MANIFEST | jsonValue zNormCut default)"
+
+fi
+
+## Find the input files
+im_file=$(find $im_DIR/* -maxdepth 0 -type f -name "*.nii*")
+mask_file=$(find $mask_DIR/* -maxdepth 0 -type f -name "*.nii*")
+
+## convert string to int
+# arrIN=(${z_norm_quant//,/ })
+
+out_path="output/"
+input_fn="$(echo "$im_file" | sed "s/.*\///")"
+input_fn="${input_fn%.nii*}"
+output_fn="${input_fn}_znorm.nii.gz"
+
+out_path+=$output_fn
+out_path="$(echo -e "${out_path}" | tr -d '[:space:]')"
+
+## If necessary input files are found, run the thing
+if [[ -f $im_file ]] ; then
+
+  CaPTk_dir=/opt/captk/1.8.1/usr # path to install (in Docker container)
+
+  if [[ -f $mask_file ]] ; then
+    echo "$CONTAINER  Running CaPTk Preprocessing Z-score Normalization"
+    ${CaPTk_dir}/bin/Preprocessing \
+      -i "${im_file}" \
+      -m "${mask_file}" \
+      -o "${out_path}" \
+      -zn 1 -zq "${z_norm_quant}" -zc "${z_norm_cut}"
+  else
+    echo "$CONTAINER  Running CaPTk Preprocessing Z-score Normalization"
+    ${CaPTk_dir}/bin/Preprocessing \
+      -i "${im_file}" \
+      -o "${out_path}" \
+      -zn 1 -zq "${z_norm_quant}" -zc "${z_norm_cut}"
+  fi
+
+################# Finish up #################
+  STATUS=$?
+else
+  echo "$CONTAINER  Input files not found!"
+  exit 1
+fi
+
+# Check exit status
+if [[ $STATUS == 0 ]]
+  then
+    echo -e "$CONTAINER  Done!"
+
+  else
+    echo "$CONTAINER  command returned a non-zero exit code = [$STATUS]."
+    exit 1
+fi
+
+exit 0
