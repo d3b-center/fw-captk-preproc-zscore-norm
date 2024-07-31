@@ -1,17 +1,17 @@
 {
   "name": "captk-preproc-zscore-norm",
-  "label": "CaPTk - Preprocessing co-registration",
+  "label": "CaPTk - Preprocessing Z-score Normalization",
   "description": "This package provides z-score for image pre-processing.",
   "author": "CBICA",
   "maintainer": "D3b-TIRU <flywheel@d3b.center>",
   "source": "https://github.com/d3b-center/fw-captk-preproc-zscore-norm", 
   "url": "https://cbica.github.io/CaPTk/preprocessing_zScoreNorm.html",
-  "version": "0.0.0",
+  "version": "0.0.0-1",
   "license": "Apache-2.0",
   "custom": {
     "gear-builder": {
       "category": "analysis",
-      "image": "chop.flywheel.io/captk-preproc-zscore-norm:0.0.0"
+      "image": "chop.flywheel.io/captk-preproc-zscore-norm:0.0.0-1"
     },
     "flywheel": {
       "suite": "CaPTk"
